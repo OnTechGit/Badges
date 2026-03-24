@@ -25,6 +25,9 @@ app.use('/api/badge-classes', require('./routes/badge-class.routes'));
 app.use('/api/recipients', require('./routes/recipient.routes'));
 app.use('/api/assertions', require('./routes/assertion.routes'));
 
+// Verificación pública
+app.use('/verify', require('./routes/verifier.routes'));
+
 // Error handler
 app.use((err, _req, res, _next) => {
   const status = err.status || 500;
