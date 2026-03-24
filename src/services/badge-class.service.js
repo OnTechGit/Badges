@@ -38,13 +38,21 @@ async function update(id, data) {
 }
 
 async function remove(id) {
-  const badge = await badgeClassModel.deactivate(id);
+  const badge = await badgeClassModel.findById(id);
   if (!badge) {
     const err = new Error('Badge class not found');
     err.status = 404;
     throw err;
   }
-  return badge;
+
+  const has = await badgeClassModel.hasAssertions(id);
+  if (has) {
+    const err = new Error('Cannot delete badge class: has assertions emitted');
+    err.status = 409;
+    throw err;
+  }
+
+  return badgeClassModel.remove(id);
 }
 
 module.exports = { getAll, getById, create, update, remove };

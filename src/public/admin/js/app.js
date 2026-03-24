@@ -110,8 +110,8 @@ function showDashboard() {
 // ============================================
 // NAVIGATION
 // ============================================
-const sections = { issuers: 'sec-issuers', badges: 'sec-badges', recipients: 'sec-recipients', assertions: 'sec-assertions' };
-const loaders = { issuers: loadIssuers, badges: loadBadges, recipients: loadRecipients, assertions: loadAssertions };
+const sections = { issuers: 'sec-issuers', badges: 'sec-badges', recipients: 'sec-recipients', assertions: 'sec-assertions', users: 'sec-users' };
+const loaders = { issuers: loadIssuers, badges: loadBadges, recipients: loadRecipients, assertions: loadAssertions, users: loadUsers };
 
 document.querySelectorAll('.nav-item').forEach((item) => {
   item.addEventListener('click', (e) => {
@@ -141,11 +141,12 @@ async function loadIssuers() {
           <td>${i.email || '—'}</td>
           <td>${truncate(i.description, 50)}</td>
           <td>${fmtDate(i.created_at)}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteIssuer('${i.id}', '${i.name.replace(/'/g, "\\'")}')">Eliminar</button></td>
         </tr>`).join('')
-      : '<tr class="empty-row"><td colspan="5">No hay issuers registrados</td></tr>';
+      : '<tr class="empty-row"><td colspan="6">No hay issuers registrados</td></tr>';
 
     document.getElementById('issuers-table').innerHTML = `<table>
-      <thead><tr><th>Nombre</th><th>URL</th><th>Email</th><th>Descripción</th><th>Creado</th></tr></thead>
+      <thead><tr><th>Nombre</th><th>URL</th><th>Email</th><th>Descripción</th><th>Creado</th><th>Acciones</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -163,6 +164,25 @@ async function createIssuer(e) {
     toast('Issuer creado', 'success');
     toggleForm('issuer-form');
     e.target.reset();
+    loadIssuers();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteIssuer(id, name) {
+  openModal(
+    'Eliminar Issuer',
+    `<p>¿Eliminar a <strong>${name}</strong> y todos sus badge classes sin assertions?</p>
+     <p style="color:var(--text-light);font-size:13px;margin-top:8px">Si tiene badges con assertions emitidas no se podrá eliminar.</p>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-danger" onclick="confirmDeleteIssuer('${id}')">Eliminar</button>`
+  );
+}
+
+async function confirmDeleteIssuer(id) {
+  try {
+    await api('DELETE', '/api/issuers/' + id);
+    toast('Issuer eliminado', 'success');
+    closeModal();
     loadIssuers();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -192,11 +212,12 @@ async function loadBadges() {
           <td>${issuerMap[b.issuer_id] || '—'}</td>
           <td>${b.achievement_type ? `<span class="tag tag-type">${b.achievement_type}</span>` : '—'}</td>
           <td>${fmtDate(b.created_at)}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteBadge('${b.id}', '${b.name.replace(/'/g, "\\'")}')">Eliminar</button></td>
         </tr>`).join('')
-      : '<tr class="empty-row"><td colspan="5">No hay badge classes</td></tr>';
+      : '<tr class="empty-row"><td colspan="6">No hay badge classes</td></tr>';
 
     document.getElementById('badges-table').innerHTML = `<table>
-      <thead><tr><th>Nombre</th><th>Descripción</th><th>Issuer</th><th>Tipo</th><th>Creado</th></tr></thead>
+      <thead><tr><th>Nombre</th><th>Descripción</th><th>Issuer</th><th>Tipo</th><th>Creado</th><th>Acciones</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -215,6 +236,25 @@ async function createBadge(e) {
     toast('Badge class creado', 'success');
     toggleForm('badge-form');
     e.target.reset();
+    loadBadges();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteBadge(id, name) {
+  openModal(
+    'Eliminar Badge Class',
+    `<p>¿Eliminar <strong>${name}</strong>?</p>
+     <p style="color:var(--text-light);font-size:13px;margin-top:8px">Solo se puede eliminar si no tiene assertions emitidas.</p>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-danger" onclick="confirmDeleteBadge('${id}')">Eliminar</button>`
+  );
+}
+
+async function confirmDeleteBadge(id) {
+  try {
+    await api('DELETE', '/api/badge-classes/' + id);
+    toast('Badge class eliminado', 'success');
+    closeModal();
     loadBadges();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -358,6 +398,61 @@ async function confirmRevoke(id) {
     toast('Assertion revocada', 'success');
     closeModal();
     loadAssertions();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================
+// USERS
+// ============================================
+async function loadUsers() {
+  try {
+    const data = await api('GET', '/api/auth/users');
+    const rows = data.length
+      ? data.map((u) => `<tr>
+          <td><strong>${u.email}</strong></td>
+          <td>${fmtDate(u.created_at)}</td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}', '${u.email}')">Eliminar</button>
+          </td>
+        </tr>`).join('')
+      : '<tr class="empty-row"><td colspan="3">No hay usuarios</td></tr>';
+
+    document.getElementById('users-table').innerHTML = `<table>
+      <thead><tr><th>Email</th><th>Creado</th><th>Acciones</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function createUser(e) {
+  e.preventDefault();
+  try {
+    await api('POST', '/api/auth/register', {
+      email: document.getElementById('usr-email').value,
+      password: document.getElementById('usr-password').value,
+    });
+    toast('Usuario creado', 'success');
+    toggleForm('user-form');
+    e.target.reset();
+    loadUsers();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteUser(id, email) {
+  openModal(
+    'Eliminar usuario',
+    `<p>¿Estás seguro de eliminar a <strong>${email}</strong>?</p>
+     <p style="color:var(--text-light);font-size:13px;margin-top:8px">Esta acción no se puede deshacer.</p>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-danger" onclick="confirmDeleteUser('${id}')">Eliminar</button>`
+  );
+}
+
+async function confirmDeleteUser(id) {
+  try {
+    await api('DELETE', '/api/auth/users/' + id);
+    toast('Usuario eliminado', 'success');
+    closeModal();
+    loadUsers();
   } catch (err) { toast(err.message, 'error'); }
 }
 

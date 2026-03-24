@@ -52,6 +52,9 @@
         <a href="#" class="nav-item" data-section="assertions">
           <span class="nav-icon">&#10003;</span> Assertions
         </a>
+        <a href="#" class="nav-item" data-section="users">
+          <span class="nav-icon">&#9881;</span> Usuarios
+        </a>
       </nav>
       <div class="sidebar-footer">
         <button id="btn-logout" class="btn btn-outline btn-full">Cerrar sesión</button>
@@ -172,6 +175,28 @@
           </form>
         </div>
         <div id="assertions-table" class="table-wrap"></div>
+      </section>
+
+      <!-- USERS -->
+      <section id="sec-users" class="section hidden">
+        <div class="section-header">
+          <h2>Usuarios Admin</h2>
+          <button class="btn btn-primary" onclick="toggleForm('user-form')">+ Nuevo Usuario</button>
+        </div>
+        <div id="user-form" class="form-card hidden">
+          <h3>Crear Usuario</h3>
+          <form onsubmit="createUser(event)">
+            <div class="form-row">
+              <div class="form-group"><label>Email *</label><input type="email" id="usr-email" required></div>
+              <div class="form-group"><label>Contraseña * (mín. 8 caracteres)</label><input type="password" id="usr-password" required minlength="8"></div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Crear</button>
+              <button type="button" class="btn btn-outline" onclick="toggleForm('user-form')">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <div id="users-table" class="table-wrap"></div>
       </section>
 
     </main>

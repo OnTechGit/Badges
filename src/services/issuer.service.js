@@ -23,4 +23,22 @@ async function create(data) {
   return issuerModel.create(data);
 }
 
-module.exports = { getAll, getById, create };
+async function remove(id) {
+  const issuer = await issuerModel.findById(id);
+  if (!issuer) {
+    const err = new Error('Issuer not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const has = await issuerModel.hasAssertions(id);
+  if (has) {
+    const err = new Error('Cannot delete issuer: has badges with assertions emitted');
+    err.status = 409;
+    throw err;
+  }
+
+  return issuerModel.removeCascade(id);
+}
+
+module.exports = { getAll, getById, create, remove };

@@ -18,4 +18,22 @@ async function register(req, res, next) {
   }
 }
 
-module.exports = { login, register };
+async function getAll(_req, res, next) {
+  try {
+    const users = await authService.getAll();
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function remove(req, res, next) {
+  try {
+    const deleted = await authService.remove(req.params.id, req.user.sub);
+    res.json(deleted);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { login, register, getAll, remove };

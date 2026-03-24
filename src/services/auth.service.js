@@ -36,13 +36,27 @@ async function login(email, password) {
   return { token, expiresIn: JWT_EXPIRES_IN };
 }
 
-async function register(email, password) {
-  if (nodeEnv !== 'development') {
-    const err = new Error('Registration is only available in development mode');
-    err.status = 403;
+async function getAll() {
+  return authModel.findAll();
+}
+
+async function remove(id, currentUserId) {
+  if (id === currentUserId) {
+    const err = new Error('Cannot delete your own account');
+    err.status = 400;
     throw err;
   }
 
+  const deleted = await authModel.remove(id);
+  if (!deleted) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+  return deleted;
+}
+
+async function register(email, password) {
   if (!email || !password) {
     const err = new Error('email and password are required');
     err.status = 400;
@@ -70,4 +84,4 @@ function verifyToken(token) {
   return jwt.verify(token, JWT_SECRET);
 }
 
-module.exports = { login, register, verifyToken };
+module.exports = { login, register, verifyToken, getAll, remove };

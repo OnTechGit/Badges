@@ -34,4 +34,35 @@ async function create({ name, url, email, description, image_url }) {
   return result.recordset[0];
 }
 
-module.exports = { findAll, findById, create };
+async function hasAssertions(issuerId) {
+  const pool = await getPool();
+  const result = await pool
+    .request()
+    .input('issuer_id', sql.UniqueIdentifier, issuerId)
+    .query(`
+      SELECT TOP 1 a.id
+      FROM assertions a
+      JOIN badge_classes bc ON bc.id = a.badge_class_id
+      WHERE bc.issuer_id = @issuer_id
+    `);
+  return result.recordset.length > 0;
+}
+
+async function removeCascade(issuerId) {
+  const pool = await getPool();
+  await pool
+    .request()
+    .input('issuer_id', sql.UniqueIdentifier, issuerId)
+    .query('DELETE FROM badge_classes WHERE issuer_id = @issuer_id');
+  const result = await pool
+    .request()
+    .input('id', sql.UniqueIdentifier, issuerId)
+    .query(`
+      DELETE FROM issuers
+      OUTPUT DELETED.*
+      WHERE id = @id
+    `);
+  return result.recordset[0] || null;
+}
+
+module.exports = { findAll, findById, create, hasAssertions, removeCascade };

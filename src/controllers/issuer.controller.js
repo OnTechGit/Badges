@@ -37,4 +37,13 @@ async function getProfile(req, res, next) {
   }
 }
 
-module.exports = { getAll, getById, create, getProfile };
+async function remove(req, res, next) {
+  try {
+    const issuer = await issuerService.remove(req.params.id);
+    res.json(issuer);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getAll, getById, create, getProfile, remove };

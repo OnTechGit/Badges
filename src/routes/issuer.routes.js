@@ -8,5 +8,6 @@ router.get('/', controller.getAll);
 router.get('/:id', controller.getById);
 router.get('/:id/profile', controller.getProfile);
 router.post('/', requireAuth, controller.create);
+router.delete('/:id', requireAuth, controller.remove);
 
 module.exports = router;

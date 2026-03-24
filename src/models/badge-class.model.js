@@ -87,4 +87,22 @@ async function deactivate(id) {
   return result.recordset[0] || null;
 }
 
-module.exports = { findAll, findById, create, update, deactivate };
+async function hasAssertions(id) {
+  const pool = await getPool();
+  const result = await pool
+    .request()
+    .input('id', sql.UniqueIdentifier, id)
+    .query('SELECT TOP 1 id FROM assertions WHERE badge_class_id = @id');
+  return result.recordset.length > 0;
+}
+
+async function remove(id) {
+  const pool = await getPool();
+  const result = await pool
+    .request()
+    .input('id', sql.UniqueIdentifier, id)
+    .query('DELETE FROM badge_classes OUTPUT DELETED.* WHERE id = @id');
+  return result.recordset[0] || null;
+}
+
+module.exports = { findAll, findById, create, update, deactivate, hasAssertions, remove };
