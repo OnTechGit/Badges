@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -8,13 +9,18 @@ const { generalLimiter, authLimiter, verifyLimiter } = require('./middlewares/ra
 const app = express();
 
 // Middlewares globales
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
 app.use(cors());
 app.use(express.json());
 app.use(generalLimiter);
 if (nodeEnv === 'development') {
   app.use(morgan('dev'));
 }
+
+// Admin panel (static files)
+app.use('/admin', express.static(path.join(__dirname, 'public', 'admin')));
 
 // Health check
 app.get('/health', (_req, res) => {
