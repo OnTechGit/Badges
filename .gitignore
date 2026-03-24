@@ -8,3 +8,6 @@ Thumbs.db
 
 # Ed25519 signing keys
 src/config/keys/
+
+# IISNode logs
+iisnode/
