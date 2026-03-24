@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "generate-keys": "node src/scripts/generate-keys.js"
+    "generate-keys": "node src/scripts/generate-keys.js",
+    "create-admin": "node src/scripts/create-admin.js"
   },
   "keywords": [
     "open-badges",
@@ -16,12 +17,14 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "bs58": "^4.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
     "jsonld": "^9.0.0",
+    "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
     "mssql": "^11.0.1",
     "tweetnacl": "^1.0.3"

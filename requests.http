@@ -1,6 +1,33 @@
+### ============================================
+### AUTH
+### ============================================
+
+### Registrar admin (solo en development)
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "admin@ceplatam.com",
+  "password": "Admin2024!"
+}
+
+### Login
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@ceplatam.com",
+  "password": "Admin2024!"
+}
+
+### ============================================
+### ISSUERS (POST requiere Authorization: Bearer <token>)
+### ============================================
+
 ### Crear issuer
 POST http://localhost:3000/api/issuers
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "name": "Centro de Excelencia Profesional",

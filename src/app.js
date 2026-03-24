@@ -29,6 +29,9 @@ app.get('/.well-known/did.json', (_req, res, next) => {
   }
 });
 
+// Auth
+app.use('/api/auth', require('./routes/auth.routes'));
+
 // Rutas
 app.use('/api/issuers', require('./routes/issuer.routes'));
 app.use('/api/badge-classes', require('./routes/badge-class.routes'));
