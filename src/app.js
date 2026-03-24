@@ -19,9 +19,15 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-// TODO: Registrar rutas aquí
-// app.use('/api/v1/issuers', require('./routes/issuer.routes'));
-// app.use('/api/v1/badges', require('./routes/badge.routes'));
-// app.use('/api/v1/assertions', require('./routes/assertion.routes'));
+// Rutas
+app.use('/api/issuers', require('./routes/issuer.routes'));
+
+// Error handler
+app.use((err, _req, res, _next) => {
+  const status = err.status || 500;
+  res.status(status).json({
+    error: err.message || 'Internal server error',
+  });
+});
 
 module.exports = app;
