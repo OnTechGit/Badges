@@ -1,6 +1,7 @@
 const assertionModel = require('../models/assertion.model');
 const badgeClassModel = require('../models/badge-class.model');
 const recipientModel = require('../models/recipient.model');
+const { signCredential } = require('./signing.service');
 const { port } = require('../config/env');
 
 function buildCredentialJson(row) {
@@ -101,7 +102,8 @@ async function create(data) {
 
   const assertion = await assertionModel.create(data);
   const full = await assertionModel.findFullById(assertion.id);
-  return buildCredentialJson(full);
+  const credential = buildCredentialJson(full);
+  return signCredential(credential);
 }
 
 async function revoke(id, reason) {

@@ -5,3 +5,6 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Ed25519 signing keys
+src/config/keys/
