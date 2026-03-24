@@ -28,6 +28,7 @@
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
     "mssql": "^11.0.1",
+    "nodemailer": "^8.0.3",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {

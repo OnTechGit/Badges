@@ -2,6 +2,8 @@ const assertionModel = require('../models/assertion.model');
 const badgeClassModel = require('../models/badge-class.model');
 const recipientModel = require('../models/recipient.model');
 const { signCredential } = require('./signing.service');
+const { sendBadgeEmail } = require('./email.service');
+const issuerModel = require('../models/issuer.model');
 const { port } = require('../config/env');
 
 function buildCredentialJson(row) {
@@ -103,7 +105,13 @@ async function create(data) {
   const assertion = await assertionModel.create(data);
   const full = await assertionModel.findFullById(assertion.id);
   const credential = buildCredentialJson(full);
-  return signCredential(credential);
+  const signed = await signCredential(credential);
+
+  // Send notification email (non-blocking)
+  const issuer = await issuerModel.findById(badge.issuer_id);
+  sendBadgeEmail(recipient, assertion, badge, issuer).catch(() => {});
+
+  return signed;
 }
 
 async function revoke(id, reason) {
