@@ -1,0 +1,27 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const { nodeEnv } = require('./config/env');
+
+const app = express();
+
+// Middlewares globales
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+if (nodeEnv === 'development') {
+  app.use(morgan('dev'));
+}
+
+// Health check
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// TODO: Registrar rutas aquí
+// app.use('/api/v1/issuers', require('./routes/issuer.routes'));
+// app.use('/api/v1/badges', require('./routes/badge.routes'));
+// app.use('/api/v1/assertions', require('./routes/assertion.routes'));
+
+module.exports = app;
