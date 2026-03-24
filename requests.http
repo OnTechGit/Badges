@@ -126,3 +126,13 @@ GET http://localhost:3000/verify/9062C82C-6C52-442D-8323-11A930444D4E/status
 
 ### Obtener lista de credenciales revocadas
 GET http://localhost:3000/api/status-list
+
+### ============================================
+### DID & ISSUER PROFILE
+### ============================================
+
+### DID Document (did:web resolution)
+GET http://localhost:3000/.well-known/did.json
+
+### Perfil público del issuer (Open Badges 3.0 Profile)
+GET http://localhost:3000/api/issuers/C4AA687A-E954-42F6-BBF1-129E1FD2ABD7/profile

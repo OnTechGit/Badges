@@ -1,4 +1,5 @@
 const issuerService = require('../services/issuer.service');
+const issuerProfileService = require('../services/issuer-profile.service');
 
 async function getAll(_req, res, next) {
   try {
@@ -27,4 +28,13 @@ async function create(req, res, next) {
   }
 }
 
-module.exports = { getAll, getById, create };
+async function getProfile(req, res, next) {
+  try {
+    const profile = await issuerProfileService.getPublicProfile(req.params.id);
+    res.json(profile);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getAll, getById, create, getProfile };
