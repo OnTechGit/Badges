@@ -1,0 +1,128 @@
+### Crear issuer
+POST http://localhost:3000/api/issuers
+Content-Type: application/json
+
+{
+  "name": "Centro de Excelencia Profesional",
+  "url": "https://ceplatam.com",
+  "email": "badges@ceplatam.com",
+  "description": "Emisor oficial de credenciales digitales"
+}
+
+### Obtener todos los issuers
+GET http://localhost:3000/api/issuers
+
+### Crear badge class
+POST http://localhost:3000/api/badge-classes
+Content-Type: application/json
+
+{
+  "issuer_id": "C4AA687A-E954-42F6-BBF1-129E1FD2ABD7",
+  "name": "Desarrollo Web Full Stack",
+  "description": "Credencial para profesionales en desarrollo web moderno",
+  "criteria_narrative": "Completar 120 horas de formación y aprobar evaluación final",
+  "achievement_type": "Certificate"
+}
+
+### Listar badge classes
+GET http://localhost:3000/api/badge-classes
+
+
+### Crear recipient
+POST http://localhost:3000/api/recipients
+Content-Type: application/json
+
+{
+  "name": "Juan Pérez",
+  "email": "juan.perez@email.com"
+}
+
+### Listar recipients
+GET http://localhost:3000/api/recipients
+
+
+
+### Emitir badge
+POST http://localhost:3000/api/assertions
+Content-Type: application/json
+
+{
+  "badge_class_id": "41F6CB38-9B5B-4766-87C5-2F34F3424C1F",
+  "recipient_id": "193DBD3F-6DDF-4A5F-B548-073472C66785"
+}
+
+
+### Emitir badge con firma
+POST http://localhost:3000/api/assertions
+Content-Type: application/json
+
+{
+  "badge_class_id": "41F6CB38-9B5B-4766-87C5-2F34F3424C1F",
+  "recipient_id": "193DBD3F-6DDF-4A5F-B548-073472C66785"
+}
+
+### Crear segundo recipient
+POST http://localhost:3000/api/recipients
+Content-Type: application/json
+
+{
+  "name": "María García",
+  "email": "maria.garcia@email.com"
+}
+
+### Emitir badge con firma - María García
+POST http://localhost:3000/api/assertions
+Content-Type: application/json
+
+{
+  "badge_class_id": "41F6CB38-9B5B-4766-87C5-2F34F3424C1F",
+  "recipient_id": "FFD303C3-3DBA-4E8F-8E3F-8F0E0EABCF97"
+}
+
+### Crear tercer recipient
+POST http://localhost:3000/api/recipients
+Content-Type: application/json
+
+{
+  "name": "Carlos López",
+  "email": "carlos.lopez@email.com"
+}
+
+### Emitir badge con firma - Carlos López
+POST http://localhost:3000/api/assertions
+Content-Type: application/json
+
+{
+  "badge_class_id": "41F6CB38-9B5B-4766-87C5-2F34F3424C1F",
+  "recipient_id": "FAA63E40-1DAB-4CE0-91AF-9D08D694C0C6"
+}
+
+
+
+### Verificar badge de Carlos López
+GET http://localhost:3000/verify/9062C82C-6C52-442D-8323-11A930444D4E
+
+### Solo estado
+GET http://localhost:3000/verify/9062C82C-6C52-442D-8323-11A930444D4E/status
+
+### ============================================
+### REVOCACIÓN
+### ============================================
+
+### Revocar assertion de Carlos López
+POST http://localhost:3000/api/assertions/9062C82C-6C52-442D-8323-11A930444D4E/revoke
+Content-Type: application/json
+
+{
+  "reason": "Certificado emitido por error - datos incorrectos del recipient"
+}
+
+### Verificar badge revocado (debe retornar valid: false)
+GET http://localhost:3000/verify/9062C82C-6C52-442D-8323-11A930444D4E/status
+
+### ============================================
+### STATUS LIST (lista pública de revocaciones)
+### ============================================
+
+### Obtener lista de credenciales revocadas
+GET http://localhost:3000/api/status-list

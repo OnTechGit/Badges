@@ -92,4 +92,26 @@ async function findFullById(id) {
   return result.recordset[0] || null;
 }
 
-module.exports = { findAll, findById, findByBadgeAndRecipient, create, revoke, findFullById };
+async function findRevoked() {
+  const pool = await getPool();
+  const result = await pool.request().query(`
+    SELECT
+      a.id,
+      a.badge_class_id,
+      a.recipient_id,
+      a.issued_on,
+      a.revoked,
+      a.revocation_reason,
+      bc.name AS badge_name,
+      r.name AS recipient_name,
+      r.email AS recipient_email
+    FROM assertions a
+    JOIN badge_classes bc ON bc.id = a.badge_class_id
+    JOIN recipients r ON r.id = a.recipient_id
+    WHERE a.revoked = 1
+    ORDER BY a.issued_on DESC
+  `);
+  return result.recordset;
+}
+
+module.exports = { findAll, findById, findByBadgeAndRecipient, create, revoke, findFullById, findRevoked };

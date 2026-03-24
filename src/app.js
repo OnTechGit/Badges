@@ -27,6 +27,7 @@ app.use('/api/assertions', require('./routes/assertion.routes'));
 
 // Verificación pública
 app.use('/verify', require('./routes/verifier.routes'));
+app.use('/api/status-list', require('./routes/status-list.routes'));
 
 // Error handler
 app.use((err, _req, res, _next) => {
