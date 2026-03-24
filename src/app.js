@@ -21,6 +21,7 @@ app.get('/health', (_req, res) => {
 
 // Rutas
 app.use('/api/issuers', require('./routes/issuer.routes'));
+app.use('/api/badge-classes', require('./routes/badge-class.routes'));
 
 // Error handler
 app.use((err, _req, res, _next) => {
