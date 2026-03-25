@@ -124,6 +124,9 @@ app.use('/api/badge-classes', require('./routes/badge-class.routes'));
 app.use('/api/recipients', require('./routes/recipient.routes'));
 app.use('/api/assertions', require('./routes/assertion.routes'));
 
+// Widget embebible
+app.use('/widget', require('./routes/widget.routes'));
+
 // Verificación pública
 app.use('/verify', verifyLimiter, require('./routes/verifier.routes'));
 app.use('/api/status-list', require('./routes/status-list.routes'));

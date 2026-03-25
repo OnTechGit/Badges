@@ -534,6 +534,9 @@ async function loadAssertions() {
         const linkedinBtn = a.revoked
           ? ''
           : `<button class="btn btn-sm" style="background:#0077B5;color:#fff" onclick="shareLinkedIn('${a.id}')">LinkedIn</button>`;
+        const shareBtn = a.revoked
+          ? ''
+          : `<button class="btn btn-sm" style="background:#79368f;color:#fff" onclick="showShareModal('${a.id}')">Compartir</button>`;
         return `<tr>
           <td>${badgeMap[a.badge_class_id] || '—'}</td>
           <td>${recMap[a.recipient_id] || '—'}</td>
@@ -541,6 +544,7 @@ async function loadAssertions() {
           <td>${status}</td>
           <td>
             <button class="btn btn-outline btn-sm" onclick="viewAssertion('${a.id}')">Ver</button>
+            ${shareBtn}
             ${linkedinBtn}
             ${revokeBtn}
           </td>
@@ -628,6 +632,39 @@ async function shareLinkedIn(id) {
       toast('LinkedIn URL not returned', 'error');
     }
   } catch (err) { toast(err.message, 'error'); }
+}
+
+function showShareModal(id) {
+  const widgetUrl = API + '/widget/' + id;
+  const embedSnippet = `<script src="${API}/widget/${id}/embed.js"><\/script>`;
+
+  openModal(
+    'Compartir Badge',
+    `<div style="margin-bottom:16px">
+       <iframe src="${widgetUrl}" style="border:none;width:100%;height:520px;border-radius:12px" loading="lazy"></iframe>
+     </div>
+     <div style="margin-bottom:12px">
+       <label style="font-size:13px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Snippet para embeber</label>
+       <div style="display:flex;gap:8px">
+         <input type="text" id="share-snippet" value='${embedSnippet}' readonly
+           style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:monospace;background:var(--bg)">
+         <button class="btn btn-primary btn-sm" onclick="copySnippet()">Copiar</button>
+       </div>
+     </div>`,
+    `<a class="btn btn-outline" href="${widgetUrl}" target="_blank">Ver página del badge</a>
+     <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>`
+  );
+}
+
+function copySnippet() {
+  const input = document.getElementById('share-snippet');
+  navigator.clipboard.writeText(input.value).then(() => {
+    toast('Snippet copiado', 'success');
+  }).catch(() => {
+    input.select();
+    document.execCommand('copy');
+    toast('Snippet copiado', 'success');
+  });
 }
 
 // ============================================
