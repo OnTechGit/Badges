@@ -114,4 +114,33 @@ async function findRevoked() {
   return result.recordset;
 }
 
-module.exports = { findAll, findById, findByBadgeAndRecipient, create, revoke, findFullById, findRevoked };
+async function findActiveByRecipient(recipientId) {
+  const pool = await getPool();
+  const result = await pool
+    .request()
+    .input('recipient_id', sql.UniqueIdentifier, recipientId)
+    .query(`
+      SELECT
+        a.id, a.issued_on, a.expires_at,
+        bc.name AS badge_name,
+        bc.description AS badge_description,
+        bc.achievement_type,
+        bc.criteria_narrative,
+        bc.image_url AS badge_image_url,
+        i.name AS issuer_name,
+        i.url AS issuer_url,
+        i.email AS issuer_email,
+        i.image_url AS issuer_image_url,
+        r.name AS recipient_name,
+        r.email AS recipient_email
+      FROM assertions a
+      JOIN badge_classes bc ON bc.id = a.badge_class_id
+      JOIN issuers i ON i.id = bc.issuer_id
+      JOIN recipients r ON r.id = a.recipient_id
+      WHERE a.recipient_id = @recipient_id AND a.revoked = 0
+      ORDER BY a.issued_on DESC
+    `);
+  return result.recordset;
+}
+
+module.exports = { findAll, findById, findByBadgeAndRecipient, create, revoke, findFullById, findRevoked, findActiveByRecipient };

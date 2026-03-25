@@ -477,11 +477,12 @@ async function loadRecipients() {
           <td>${r.email}</td>
           <td>${r.url || '—'}</td>
           <td>${fmtDate(r.created_at)}</td>
+          <td><a class="btn btn-sm" style="background:#79368f;color:#fff;text-decoration:none" href="${API}/api/recipients/${r.id}/transcript" target="_blank">Transcript</a></td>
         </tr>`).join('')
-      : '<tr class="empty-row"><td colspan="4">No hay recipients</td></tr>';
+      : '<tr class="empty-row"><td colspan="5">No hay recipients</td></tr>';
 
     document.getElementById('recipients-table').innerHTML = `<table>
-      <thead><tr><th>Nombre</th><th>Email</th><th>URL</th><th>Creado</th></tr></thead>
+      <thead><tr><th>Nombre</th><th>Email</th><th>URL</th><th>Creado</th><th>Acciones</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   } catch (err) { toast(err.message, 'error'); }
 }
