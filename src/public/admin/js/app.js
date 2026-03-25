@@ -407,8 +407,20 @@ async function confirmRevoke(id) {
 
 async function shareLinkedIn(id) {
   try {
-    const data = await api('GET', '/api/assertions/' + id + '/linkedin');
-    window.open(data.url, '_blank');
+    const res = await fetch(API + '/api/assertions/' + id + '/linkedin', {
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to get LinkedIn URL' }));
+      toast(err.error, 'error');
+      return;
+    }
+    const data = await res.json();
+    if (data.url) {
+      window.open(data.url, '_blank');
+    } else {
+      toast('LinkedIn URL not returned', 'error');
+    }
   } catch (err) { toast(err.message, 'error'); }
 }
 
