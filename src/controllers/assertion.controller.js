@@ -3,7 +3,7 @@ const assertionModel = require('../models/assertion.model');
 const badgeClassModel = require('../models/badge-class.model');
 const issuerModel = require('../models/issuer.model');
 const { signCredential } = require('../services/signing.service');
-const { generateBadgeImage } = require('../services/badge-image.service');
+const { generateDesignedBadge } = require('../services/badge-designer.service');
 const { bakeIntoPng } = require('../services/image-baker.service');
 const { port } = require('../config/env');
 
@@ -58,11 +58,18 @@ async function getImage(req, res, next) {
     const issuer = await issuerModel.findById(badge.issuer_id);
 
     // Generate badge image
-    const pngBuffer = await generateBadgeImage({
+    let designConfig = null;
+    try { designConfig = badge.design_config ? JSON.parse(badge.design_config) : null; } catch (_) {}
+
+    const pngBuffer = await generateDesignedBadge({
       badgeName: badge.name,
+      recipientName: full.recipient_name,
       issuerName: issuer.name,
       achievementType: badge.achievement_type,
+      criteria: badge.criteria_narrative,
       issuedOn: assertion.issued_on,
+      expiresAt: assertion.expires_at,
+      designConfig,
     });
 
     // Build and sign credential JSON-LD

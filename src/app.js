@@ -19,8 +19,12 @@ if (nodeEnv === 'development') {
   app.use(morgan('dev'));
 }
 
-// Admin panel (static files)
+// Root redirect
+app.get('/', (_req, res) => res.redirect('/admin'));
+
+// Static files
 app.use('/admin', express.static(path.join(__dirname, 'public', 'admin')));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -43,6 +47,7 @@ app.use('/api/auth', authLimiter, require('./routes/auth.routes'));
 // Rutas
 app.use('/api/issuers', require('./routes/issuer.routes'));
 app.use('/api/badge-classes', require('./routes/badge-class.routes'));
+app.use('/api/upload', require('./routes/upload.routes'));
 app.use('/api/recipients', require('./routes/recipient.routes'));
 app.use('/api/assertions', require('./routes/assertion.routes'));
 

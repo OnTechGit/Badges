@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(node src/scripts/generate-keys.js)",
+      "Bash(node -e \":*)"
+    ]
+  }
+}

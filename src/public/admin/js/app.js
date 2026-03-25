@@ -212,7 +212,10 @@ async function loadBadges() {
           <td>${issuerMap[b.issuer_id] || '—'}</td>
           <td>${b.achievement_type ? `<span class="tag tag-type">${b.achievement_type}</span>` : '—'}</td>
           <td>${fmtDate(b.created_at)}</td>
-          <td><button class="btn btn-danger btn-sm" onclick="deleteBadge('${b.id}', '${b.name.replace(/'/g, "\\'")}')">Eliminar</button></td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="editBadge('${b.id}')">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteBadge('${b.id}', '${b.name.replace(/'/g, "\\'")}')">Eliminar</button>
+          </td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="6">No hay badge classes</td></tr>';
 
@@ -222,20 +225,223 @@ async function loadBadges() {
   } catch (err) { toast(err.message, 'error'); }
 }
 
-async function createBadge(e) {
-  e.preventDefault();
+// ---- Design config elements ----
+const DESIGN_ELEMENTS = [
+  { key: 'badgeName',     label: 'Nombre del Badge', hasRequired: false },
+  { key: 'recipientName', label: 'Nombre del Recipient', hasRequired: true },
+  { key: 'issueDate',     label: 'Fecha de Emisión', hasRequired: false },
+  { key: 'expiryDate',    label: 'Fecha de Expiración', hasRequired: false },
+  { key: 'criteria',      label: 'Criterios', hasRequired: false },
+];
+
+const DESIGN_DEFAULTS = {
+  badgeName:     { x: 50, y: 45, fontSize: 32, color: '#ffffff', align: 'center', visible: true },
+  recipientName: { x: 50, y: 55, fontSize: 24, color: '#ffffff', align: 'center', visible: true, required: false },
+  issueDate:     { x: 50, y: 65, fontSize: 16, color: '#cccccc', align: 'center', visible: true },
+  expiryDate:    { x: 50, y: 70, fontSize: 16, color: '#cccccc', align: 'center', visible: false },
+  criteria:      { x: 50, y: 80, fontSize: 14, color: '#aaaaaa', align: 'center', visible: false },
+};
+
+function buildDesignControls() {
+  const wrap = document.getElementById('design-controls-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = DESIGN_ELEMENTS.map((el) => {
+    const d = DESIGN_DEFAULTS[el.key];
+    const reqHtml = el.hasRequired
+      ? `<div class="el-field" style="grid-column:1/-1"><label>Req</label>
+           <label class="el-toggle"><input type="checkbox" id="dc-${el.key}-req" ${d.required ? 'checked' : ''} onchange="updatePreview()"><span class="slider"></span></label>
+           <span style="font-size:11px;color:var(--text-light)">Obligatorio</span></div>`
+      : '';
+    return `<div class="el-block" id="el-block-${el.key}">
+      <div class="el-block-header">
+        <span>${el.label}</span>
+        <label class="el-toggle"><input type="checkbox" id="dc-${el.key}-vis" ${d.visible ? 'checked' : ''} onchange="updatePreview()"><span class="slider"></span></label>
+      </div>
+      <div class="el-block-body" id="dc-${el.key}-body">
+        <div class="el-field"><label>X%</label><input type="range" id="dc-${el.key}-x" min="0" max="100" value="${d.x}" oninput="updatePreview()"><span class="val" id="dc-${el.key}-x-val">${d.x}</span></div>
+        <div class="el-field"><label>Y%</label><input type="range" id="dc-${el.key}-y" min="0" max="100" value="${d.y}" oninput="updatePreview()"><span class="val" id="dc-${el.key}-y-val">${d.y}</span></div>
+        <div class="el-field"><label>Px</label><input type="range" id="dc-${el.key}-fs" min="10" max="72" value="${d.fontSize}" oninput="updatePreview()"><span class="val" id="dc-${el.key}-fs-val">${d.fontSize}</span></div>
+        <div class="el-field"><label style="min-width:16px"></label><input type="color" id="dc-${el.key}-color" value="${d.color}" oninput="updatePreview()">
+          <select id="dc-${el.key}-align" onchange="updatePreview()">
+            <option value="left" ${d.align==='left'?'selected':''}>Izq</option>
+            <option value="center" ${d.align==='center'?'selected':''}>Centro</option>
+            <option value="right" ${d.align==='right'?'selected':''}>Der</option>
+          </select>
+        </div>
+        ${reqHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getDesignConfig() {
+  const elements = {};
+  DESIGN_ELEMENTS.forEach((el) => {
+    const vis = document.getElementById(`dc-${el.key}-vis`);
+    const x = document.getElementById(`dc-${el.key}-x`);
+    const y = document.getElementById(`dc-${el.key}-y`);
+    const fs = document.getElementById(`dc-${el.key}-fs`);
+    const color = document.getElementById(`dc-${el.key}-color`);
+    const align = document.getElementById(`dc-${el.key}-align`);
+    if (!vis) return;
+    elements[el.key] = {
+      x: parseInt(x.value), y: parseInt(y.value),
+      fontSize: parseInt(fs.value), color: color.value,
+      align: align.value, visible: vis.checked,
+    };
+    if (el.hasRequired) {
+      const req = document.getElementById(`dc-${el.key}-req`);
+      elements[el.key].required = req ? req.checked : false;
+    }
+  });
+  return {
+    backgroundImageUrl: document.getElementById('dc-bg-url').value || null,
+    elements,
+  };
+}
+
+async function uploadBgImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('image', file);
   try {
-    await api('POST', '/api/badge-classes', {
-      issuer_id: document.getElementById('bc-issuer').value,
-      name: document.getElementById('bc-name').value,
-      description: document.getElementById('bc-desc').value,
-      achievement_type: document.getElementById('bc-type').value || undefined,
-      image_url: document.getElementById('bc-image').value || undefined,
-      criteria_narrative: document.getElementById('bc-criteria').value || undefined,
+    const res = await fetch(API + '/api/upload/badge-bg', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + getToken() },
+      body: form,
     });
-    toast('Badge class creado', 'success');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    document.getElementById('dc-bg-url').value = data.url;
+    document.getElementById('dc-bg-thumb').src = data.url;
+    document.getElementById('dc-bg-preview-wrap').style.display = 'flex';
+    _bgImage = new Image();
+    _bgImage.onload = updatePreview;
+    _bgImage.src = data.url;
+    toast('Imagen subida', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function clearBgImage() {
+  document.getElementById('dc-bg-url').value = '';
+  document.getElementById('dc-bg-file').value = '';
+  document.getElementById('dc-bg-preview-wrap').style.display = 'none';
+  _bgImage = null;
+  updatePreview();
+}
+
+function onTypeChange() {
+  const type = document.getElementById('bc-type').value;
+  const isCertOrDiploma = type === 'Certificate' || type === 'Diploma';
+  const reqCheckbox = document.getElementById('dc-recipientName-req');
+  if (reqCheckbox) {
+    reqCheckbox.checked = isCertOrDiploma;
+  }
+  updatePreview();
+}
+
+let _editingBadgeId = null;
+
+function resetBadgeForm() {
+  _editingBadgeId = null;
+  const form = document.querySelector('#badge-form form');
+  if (form) form.reset();
+  clearBgImage();
+  buildDesignControls();
+  document.querySelector('#badge-form h3').textContent = 'Crear Badge Class';
+  updatePreview();
+}
+
+function setDesignControlValues(dc) {
+  if (!dc || !dc.elements) return;
+  // Background
+  if (dc.backgroundImageUrl) {
+    document.getElementById('dc-bg-url').value = dc.backgroundImageUrl;
+    document.getElementById('dc-bg-thumb').src = dc.backgroundImageUrl;
+    document.getElementById('dc-bg-preview-wrap').style.display = 'flex';
+    _bgImage = new Image();
+    _bgImage.onload = updatePreview;
+    _bgImage.src = dc.backgroundImageUrl;
+  }
+  // Elements
+  DESIGN_ELEMENTS.forEach((el) => {
+    const vals = dc.elements[el.key];
+    if (!vals) return;
+    const setVal = (suffix, value) => {
+      const input = document.getElementById(`dc-${el.key}-${suffix}`);
+      if (input) input.value = value;
+    };
+    setVal('vis', ''); // checkbox
+    const vis = document.getElementById(`dc-${el.key}-vis`);
+    if (vis) vis.checked = !!vals.visible;
+    setVal('x', vals.x != null ? vals.x : 50);
+    setVal('y', vals.y != null ? vals.y : 50);
+    setVal('fs', vals.fontSize || 16);
+    setVal('color', vals.color || '#ffffff');
+    setVal('align', vals.align || 'center');
+    if (el.hasRequired) {
+      const req = document.getElementById(`dc-${el.key}-req`);
+      if (req) req.checked = !!vals.required;
+    }
+  });
+}
+
+async function editBadge(id) {
+  try {
+    const badge = await api('GET', '/api/badge-classes/' + id);
+    _editingBadgeId = id;
+
+    // Show form
+    const formCard = document.getElementById('badge-form');
+    if (formCard.classList.contains('hidden')) formCard.classList.remove('hidden');
+
+    document.querySelector('#badge-form h3').textContent = 'Editar Badge Class';
+
+    // Fill fields
+    document.getElementById('bc-issuer').value = badge.issuer_id;
+    document.getElementById('bc-name').value = badge.name;
+    document.getElementById('bc-desc').value = badge.description || '';
+    document.getElementById('bc-type').value = badge.achievement_type || '';
+
+    document.getElementById('bc-criteria').value = badge.criteria_narrative || '';
+
+    // Reset design controls then load saved config
+    buildDesignControls();
+    clearBgImage();
+
+    let dc = null;
+    try { dc = badge.design_config ? JSON.parse(badge.design_config) : null; } catch (_) {}
+    if (dc) setDesignControlValues(dc);
+
+    updatePreview();
+
+    // Scroll to form
+    formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function saveBadge(e) {
+  e.preventDefault();
+  const data = {
+    issuer_id: document.getElementById('bc-issuer').value,
+    name: document.getElementById('bc-name').value,
+    description: document.getElementById('bc-desc').value,
+    achievement_type: document.getElementById('bc-type').value || undefined,
+    criteria_narrative: document.getElementById('bc-criteria').value || undefined,
+    design_config: getDesignConfig(),
+  };
+
+  try {
+    if (_editingBadgeId) {
+      await api('PUT', '/api/badge-classes/' + _editingBadgeId, data);
+      toast('Badge class actualizado', 'success');
+    } else {
+      await api('POST', '/api/badge-classes', data);
+      toast('Badge class creado', 'success');
+    }
     toggleForm('badge-form');
-    e.target.reset();
+    resetBadgeForm();
     loadBadges();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -480,10 +686,140 @@ async function confirmDeleteUser(id) {
 }
 
 // ============================================
+// BADGE PREVIEW (Canvas with scale factor)
+// ============================================
+
+// Real output sizes (must match badge-designer.service.js SIZES)
+const REAL_SIZES = {
+  Badge:         { w: 600,  h: 600 },
+  Certification: { w: 600,  h: 600 },
+  Certificate:   { w: 1056, h: 816 },
+  Diploma:       { w: 1056, h: 816 },
+};
+
+// Canvas preview sizes (smaller for UI)
+const PREVIEW_SIZES = {
+  Badge:         { w: 400, h: 400 },
+  Certification: { w: 400, h: 400 },
+  Certificate:   { w: 440, h: 340 },
+  Diploma:       { w: 440, h: 340 },
+  '':            { w: 400, h: 400 },
+};
+
+let _bgImage = null;
+
+function wrapCanvasText(ctx, text, maxW) {
+  const words = String(text).split(' ');
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else { line = test; }
+  }
+  if (line) lines.push(line);
+  return lines.slice(0, 3);
+}
+
+function updatePreview() {
+  const canvas = document.getElementById('badge-preview');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const type = document.getElementById('bc-type').value || 'Badge';
+  const preview = PREVIEW_SIZES[type] || PREVIEW_SIZES[''];
+  const real = REAL_SIZES[type] || REAL_SIZES.Badge;
+  canvas.width = preview.w;
+  canvas.height = preview.h;
+  const w = preview.w, h = preview.h;
+
+  // Scale factor: canvas pixels / real image pixels
+  const S = w / real.w;
+
+  // Update slider value displays and visibility
+  DESIGN_ELEMENTS.forEach((el) => {
+    ['x','y','fs'].forEach((prop) => {
+      const input = document.getElementById(`dc-${el.key}-${prop}`);
+      const valEl = document.getElementById(`dc-${el.key}-${prop}-val`);
+      if (input && valEl) valEl.textContent = input.value;
+    });
+    const vis = document.getElementById(`dc-${el.key}-vis`);
+    const body = document.getElementById(`dc-${el.key}-body`);
+    if (vis && body) {
+      body.classList.toggle('hidden-body', !vis.checked);
+    }
+  });
+
+  const cfg = getDesignConfig();
+
+  // Background
+  if (_bgImage && _bgImage.complete && _bgImage.naturalWidth) {
+    ctx.drawImage(_bgImage, 0, 0, w, h);
+  } else {
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#2d1b3d');
+    grad.addColorStop(1, '#79368f');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(0,148,212,0.06)';
+    ctx.beginPath(); ctx.arc(w * 0.8, h * 0.15, w * 0.15, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,148,212,0.04)';
+    ctx.beginPath(); ctx.arc(w * 0.2, h * 0.85, w * 0.1, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Sample text values for preview
+  const sampleTexts = {
+    badgeName: document.getElementById('bc-name').value || 'Nombre del Badge',
+    recipientName: 'Juan Pérez',
+    issueDate: new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }),
+    expiryDate: '31 de diciembre de 2027',
+    criteria: document.getElementById('bc-criteria').value || 'Completar los requisitos del programa',
+  };
+
+  // Draw each visible element with scale factor applied to fontSize
+  if (cfg.elements) {
+    Object.entries(cfg.elements).forEach(([key, el]) => {
+      if (!el.visible || !sampleTexts[key]) return;
+
+      // x% and y% are percentages of the canvas (same math as sharp: x/100 * dimension)
+      const px = (el.x / 100) * w;
+      const py = (el.y / 100) * h;
+
+      // fontSize from config is in real pixels — scale down for preview canvas
+      const realFs = el.fontSize || 16;
+      const scaledFs = Math.round(realFs * S);
+
+      ctx.fillStyle = el.color;
+      ctx.font = (realFs >= 24 ? 'bold ' : '') + scaledFs + 'px Arial';
+      ctx.textAlign = el.align || 'center';
+
+      const maxTextW = w - (20 * S * 2);
+      const lines = wrapCanvasText(ctx, sampleTexts[key], maxTextW);
+      lines.forEach((line, i) => {
+        ctx.fillText(line, px, py + i * (scaledFs * 1.3));
+      });
+
+      // Subtle position crosshair
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(px, py - scaledFs); ctx.lineTo(px, py + 4);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }
+}
+
+// ============================================
 // INIT
 // ============================================
+buildDesignControls();
+
 if (getToken()) {
   showDashboard();
 } else {
   showLogin();
 }
+
+setTimeout(updatePreview, 100);

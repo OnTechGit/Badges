@@ -11,3 +11,7 @@ src/config/keys/
 
 # IISNode logs
 iisnode/
+
+# Uploaded files
+src/public/uploads/badges/*
+!src/public/uploads/badges/.gitkeep

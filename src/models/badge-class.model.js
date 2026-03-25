@@ -17,7 +17,7 @@ async function findById(id) {
   return result.recordset[0] || null;
 }
 
-async function create({ issuer_id, name, description, image_url, criteria_narrative, criteria_url, achievement_type, tags }) {
+async function create({ issuer_id, name, description, image_url, criteria_narrative, criteria_url, achievement_type, tags, design_config }) {
   const pool = await getPool();
   const result = await pool
     .request()
@@ -29,10 +29,11 @@ async function create({ issuer_id, name, description, image_url, criteria_narrat
     .input('criteria_url', sql.NVarChar(500), criteria_url || null)
     .input('achievement_type', sql.NVarChar(100), achievement_type || null)
     .input('tags', sql.NVarChar(sql.MAX), tags ? JSON.stringify(tags) : null)
+    .input('design_config', sql.NVarChar(sql.MAX), design_config ? JSON.stringify(design_config) : null)
     .query(`
-      INSERT INTO badge_classes (issuer_id, name, description, image_url, criteria_narrative, criteria_url, achievement_type, tags)
+      INSERT INTO badge_classes (issuer_id, name, description, image_url, criteria_narrative, criteria_url, achievement_type, tags, design_config)
       OUTPUT INSERTED.*
-      VALUES (@issuer_id, @name, @description, @image_url, @criteria_narrative, @criteria_url, @achievement_type, @tags)
+      VALUES (@issuer_id, @name, @description, @image_url, @criteria_narrative, @criteria_url, @achievement_type, @tags, @design_config)
     `);
   return result.recordset[0];
 }
@@ -50,11 +51,12 @@ async function update(id, fields) {
     criteria_url: sql.NVarChar(500),
     achievement_type: sql.NVarChar(100),
     tags: sql.NVarChar(sql.MAX),
+    design_config: sql.NVarChar(sql.MAX),
   };
 
   for (const [key, type] of Object.entries(allowed)) {
     if (fields[key] !== undefined) {
-      const value = key === 'tags' ? JSON.stringify(fields[key]) : fields[key];
+      const value = (key === 'tags' || key === 'design_config') ? JSON.stringify(fields[key]) : fields[key];
       req.input(key, type, value);
       setClauses.push(`${key} = @${key}`);
     }

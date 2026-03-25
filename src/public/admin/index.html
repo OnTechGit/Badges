@@ -95,19 +95,19 @@
       <section id="sec-badges" class="section hidden">
         <div class="section-header">
           <h2>Badge Classes</h2>
-          <button class="btn btn-primary" onclick="toggleForm('badge-form')">+ Nuevo Badge</button>
+          <button class="btn btn-primary" onclick="resetBadgeForm(); toggleForm('badge-form')">+ Nuevo Badge</button>
         </div>
         <div id="badge-form" class="form-card hidden">
           <h3>Crear Badge Class</h3>
-          <form onsubmit="createBadge(event)">
+          <form onsubmit="saveBadge(event)">
             <div class="form-row">
               <div class="form-group"><label>Issuer *</label><select id="bc-issuer" required></select></div>
-              <div class="form-group"><label>Nombre *</label><input id="bc-name" required></div>
+              <div class="form-group"><label>Nombre *</label><input id="bc-name" required oninput="updatePreview()"></div>
             </div>
             <div class="form-group"><label>Descripción *</label><textarea id="bc-desc" required rows="2"></textarea></div>
             <div class="form-row">
               <div class="form-group"><label>Tipo</label>
-                <select id="bc-type">
+                <select id="bc-type" onchange="onTypeChange()">
                   <option value="">Seleccionar...</option>
                   <option>Certificate</option>
                   <option>Badge</option>
@@ -115,12 +115,32 @@
                   <option>Certification</option>
                 </select>
               </div>
-              <div class="form-group"><label>Imagen URL</label><input id="bc-image"></div>
             </div>
-            <div class="form-group"><label>Criterios</label><textarea id="bc-criteria" rows="2"></textarea></div>
-            <div class="form-actions">
+            <div class="form-group"><label>Criterios</label><textarea id="bc-criteria" rows="2" oninput="updatePreview()"></textarea></div>
+
+            <h4 style="margin:16px 0 8px;font-size:15px;">Diseño del Badge</h4>
+
+            <!-- Background image upload -->
+            <div class="form-group">
+              <label>Imagen de fondo (PNG/JPG, max 5MB)</label>
+              <input type="file" id="dc-bg-file" accept=".png,.jpg,.jpeg" onchange="uploadBgImage(this)">
+              <input type="hidden" id="dc-bg-url" value="">
+              <div id="dc-bg-preview-wrap" style="margin-top:8px;display:none">
+                <img id="dc-bg-thumb" style="max-height:60px;border-radius:4px">
+                <button type="button" class="btn btn-sm btn-outline" style="margin-left:8px" onclick="clearBgImage()">Quitar</button>
+              </div>
+            </div>
+
+            <div class="design-editor">
+              <div class="design-controls" id="design-controls-wrap"></div>
+              <div class="design-preview">
+                <canvas id="badge-preview" width="400" height="400"></canvas>
+              </div>
+            </div>
+
+            <div class="form-actions" style="margin-top:16px">
               <button type="submit" class="btn btn-primary">Guardar</button>
-              <button type="button" class="btn btn-outline" onclick="toggleForm('badge-form')">Cancelar</button>
+              <button type="button" class="btn btn-outline" onclick="resetBadgeForm(); toggleForm('badge-form')">Cancelar</button>
             </div>
           </form>
         </div>
