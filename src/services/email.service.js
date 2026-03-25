@@ -32,6 +32,24 @@ async function sendBadgeEmail(recipient, assertion, badgeClass, issuer) {
   const verifyUrl = `${appUrl}/verify/${assertion.id}`;
   const from = process.env.SMTP_FROM || `"Open Badges" <${process.env.SMTP_USER}>`;
 
+  // LinkedIn Add to Profile URL
+  const issued = new Date(assertion.issued_on);
+  const liParams = new URLSearchParams({
+    startTask: 'CERTIFICATION_NAME',
+    name: badgeClass.name,
+    organizationName: issuer.name,
+    issueYear: String(issued.getFullYear()),
+    issueMonth: String(issued.getMonth() + 1),
+    certUrl: verifyUrl,
+    certId: assertion.id,
+  });
+  if (assertion.expires_at) {
+    const exp = new Date(assertion.expires_at);
+    liParams.set('expirationYear', String(exp.getFullYear()));
+    liParams.set('expirationMonth', String(exp.getMonth() + 1));
+  }
+  const linkedinUrl = `https://www.linkedin.com/profile/add?${liParams.toString()}`;
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -73,6 +91,8 @@ async function sendBadgeEmail(recipient, assertion, badgeClass, issuer) {
 
       <div style="text-align: center;">
         <a href="${verifyUrl}" class="verify-btn">Verificar credencial</a>
+        <br>
+        <a href="${linkedinUrl}" style="display: inline-block; background: #0077B5; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; margin: 10px 0; font-weight: bold;">Agregar a LinkedIn</a>
       </div>
 
       <p style="font-size: 13px; color: #777;">

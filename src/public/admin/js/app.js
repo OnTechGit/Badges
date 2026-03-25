@@ -322,9 +322,12 @@ async function loadAssertions() {
         const status = a.revoked
           ? '<span class="tag tag-revoked">Revocada</span>'
           : '<span class="tag tag-active">Activa</span>';
-        const actions = a.revoked
+        const revokeBtn = a.revoked
           ? ''
           : `<button class="btn btn-danger btn-sm" onclick="revokeAssertion('${a.id}')">Revocar</button>`;
+        const linkedinBtn = a.revoked
+          ? ''
+          : `<button class="btn btn-sm" style="background:#0077B5;color:#fff" onclick="shareLinkedIn('${a.id}')">LinkedIn</button>`;
         return `<tr>
           <td>${badgeMap[a.badge_class_id] || '—'}</td>
           <td>${recMap[a.recipient_id] || '—'}</td>
@@ -332,7 +335,8 @@ async function loadAssertions() {
           <td>${status}</td>
           <td>
             <button class="btn btn-outline btn-sm" onclick="viewAssertion('${a.id}')">Ver</button>
-            ${actions}
+            ${linkedinBtn}
+            ${revokeBtn}
           </td>
         </tr>`;
       }).join('')
@@ -398,6 +402,13 @@ async function confirmRevoke(id) {
     toast('Assertion revocada', 'success');
     closeModal();
     loadAssertions();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function shareLinkedIn(id) {
+  try {
+    const data = await api('GET', '/api/assertions/' + id + '/linkedin');
+    window.open(data.url, '_blank');
   } catch (err) { toast(err.message, 'error'); }
 }
 
