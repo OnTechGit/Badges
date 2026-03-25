@@ -306,7 +306,7 @@ async function uploadBgImage(input) {
   const form = new FormData();
   form.append('image', file);
   try {
-    const res = await fetch(API + '/api/upload/badge-bg', {
+    const res = await fetch(API + '/api/upload-test', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + getToken() },
       body: form,

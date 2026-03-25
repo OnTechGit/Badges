@@ -1,3 +1,10 @@
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT:', err.stack || err);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED:', err.stack || err);
+});
+
 const app = require('./app');
 const { port } = require('./config/env');
 const { getPool } = require('./config/db');
