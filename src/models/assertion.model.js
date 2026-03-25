@@ -78,6 +78,7 @@ async function findFullById(id) {
         bc.criteria_narrative,
         bc.criteria_url,
         bc.achievement_type,
+        bc.related_badges,
         i.name AS issuer_name,
         i.url AS issuer_url,
         i.email AS issuer_email,

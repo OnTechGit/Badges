@@ -31,6 +31,87 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', build: '20260325b' });
 });
 
+// Email test (temporary) — uses raw fetch to bypass MSAL network issues
+app.get('/api/test-email', require('./middlewares/auth.middleware').requireAuth, async (_req, res) => {
+  const https = require('https');
+  const env = {
+    MS365_TENANT_ID: process.env.MS365_TENANT_ID ? 'set (' + process.env.MS365_TENANT_ID.substring(0, 8) + '...)' : 'NOT SET',
+    MS365_CLIENT_ID: process.env.MS365_CLIENT_ID ? 'set (' + process.env.MS365_CLIENT_ID.substring(0, 8) + '...)' : 'NOT SET',
+    MS365_CLIENT_SECRET: process.env.MS365_CLIENT_SECRET ? 'set (length: ' + process.env.MS365_CLIENT_SECRET.length + ')' : 'NOT SET',
+    MS365_USER_ID: process.env.MS365_USER_ID || 'NOT SET',
+    MS365_SHARED_MAILBOX: process.env.MS365_SHARED_MAILBOX || 'NOT SET',
+  };
+
+  if (!process.env.MS365_TENANT_ID) {
+    return res.json({ ok: false, step: 'config', error: 'MS365_TENANT_ID not set', env });
+  }
+
+  // Step 1: Test DNS/network to login.microsoftonline.com
+  function httpsPost(url, body, headers) {
+    return new Promise((resolve, reject) => {
+      const u = new URL(url);
+      const req = https.request({ hostname: u.hostname, path: u.pathname + u.search, method: 'POST', headers }, (resp) => {
+        let data = '';
+        resp.on('data', (c) => data += c);
+        resp.on('end', () => {
+          try { resolve({ status: resp.statusCode, body: JSON.parse(data) }); }
+          catch (_) { resolve({ status: resp.statusCode, body: data }); }
+        });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+  }
+
+  // Step 2: Get token via raw HTTPS
+  let token;
+  try {
+    const tokenUrl = `https://login.microsoftonline.com/${process.env.MS365_TENANT_ID}/oauth2/v2.0/token`;
+    const tokenBody = new URLSearchParams({
+      client_id: process.env.MS365_CLIENT_ID,
+      client_secret: process.env.MS365_CLIENT_SECRET,
+      scope: 'https://graph.microsoft.com/.default',
+      grant_type: 'client_credentials',
+    }).toString();
+    const tokenResp = await httpsPost(tokenUrl, tokenBody, { 'Content-Type': 'application/x-www-form-urlencoded' });
+    if (tokenResp.body.access_token) {
+      token = tokenResp.body.access_token;
+    } else {
+      return res.json({ ok: false, step: 'auth', tokenResponse: tokenResp, env });
+    }
+  } catch (err) {
+    return res.json({ ok: false, step: 'network', error: err.message, code: err.code, env });
+  }
+
+  // Step 3: Send test email via raw Graph API
+  try {
+    const userId = process.env.MS365_USER_ID;
+    const fromEmail = process.env.MS365_SHARED_MAILBOX || userId;
+    const graphUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userId)}/sendMail`;
+    const mailBody = JSON.stringify({
+      message: {
+        subject: 'Open Badges - Test Email',
+        body: { contentType: 'HTML', content: '<h2>Email de prueba</h2><p>Microsoft Graph funciona correctamente.</p>' },
+        from: { emailAddress: { address: fromEmail, name: 'Open Badges Test' } },
+        toRecipients: [{ emailAddress: { address: fromEmail, name: 'Test' } }],
+      },
+      saveToSentItems: true,
+    });
+    const sendResp = await httpsPost(graphUrl, mailBody, {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + token,
+    });
+
+    if (sendResp.status === 202 || sendResp.status === 200) {
+      return res.json({ ok: true, step: 'sent', sentTo: fromEmail, env });
+    }
+    return res.json({ ok: false, step: 'send', graphResponse: sendResp, env });
+  } catch (err) {
+    return res.json({ ok: false, step: 'send-network', error: err.message, code: err.code, env });
+  }
+});
+
 // Diagnostics (public temporarily for debugging)
 app.get('/api/diagnostics', (_req, res) => {
   try {
@@ -123,6 +204,7 @@ app.use('/api/issuers', require('./routes/issuer.routes'));
 app.use('/api/badge-classes', require('./routes/badge-class.routes'));
 app.use('/api/recipients', require('./routes/recipient.routes'));
 app.use('/api/assertions', require('./routes/assertion.routes'));
+app.use('/api/learning-paths', require('./routes/learning-path.routes'));
 
 // Widget embebible
 app.use('/widget', require('./routes/widget.routes'));

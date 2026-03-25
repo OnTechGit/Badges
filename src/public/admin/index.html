@@ -52,6 +52,9 @@
         <a href="#" class="nav-item" data-section="assertions">
           <span class="nav-icon">&#10003;</span> Assertions
         </a>
+        <a href="#" class="nav-item" data-section="paths">
+          <span class="nav-icon">&#9776;</span> Rutas
+        </a>
         <a href="#" class="nav-item" data-section="users">
           <span class="nav-icon">&#9881;</span> Usuarios
         </a>
@@ -195,6 +198,42 @@
           </form>
         </div>
         <div id="assertions-table" class="table-wrap"></div>
+      </section>
+
+      <!-- LEARNING PATHS -->
+      <section id="sec-paths" class="section hidden">
+        <div class="section-header">
+          <h2>Rutas de Aprendizaje</h2>
+          <button class="btn btn-primary" onclick="toggleForm('path-form')">+ Nueva Ruta</button>
+        </div>
+        <div id="path-form" class="form-card hidden">
+          <h3 id="path-form-title">Crear Ruta</h3>
+          <form onsubmit="savePath(event)">
+            <div class="form-row">
+              <div class="form-group"><label>Issuer *</label><select id="lp-issuer" required></select></div>
+              <div class="form-group"><label>Nombre *</label><input id="lp-name" required></div>
+            </div>
+            <div class="form-group"><label>Descripción</label><textarea id="lp-desc" rows="2"></textarea></div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Guardar</button>
+              <button type="button" class="btn btn-outline" onclick="resetPathForm(); toggleForm('path-form')">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <div id="paths-table" class="table-wrap"></div>
+        <div id="path-detail" class="hidden" style="margin-top:20px">
+          <div class="form-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <h3 id="path-detail-title"></h3>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('path-detail').classList.add('hidden')">Cerrar</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px">
+              <select id="lp-add-badge" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--radius)"></select>
+              <button class="btn btn-primary btn-sm" onclick="addBadgeToPath()">Agregar</button>
+            </div>
+            <div id="path-badges-list"></div>
+          </div>
+        </div>
       </section>
 
       <!-- USERS -->

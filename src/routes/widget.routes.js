@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const assertionModel = require('../models/assertion.model');
+const lpModel = require('../models/learning-path.model');
 const { port } = require('../config/env');
 
 const router = Router();
@@ -20,6 +21,32 @@ router.get('/:id', async (req, res, next) => {
     const dateStr = new Date(full.issued_on).toLocaleDateString('es-ES', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
+
+    // Learning path info
+    let pathHtml = '';
+    try {
+      const paths = await lpModel.findPathsForBadge(full.badge_class_id);
+      if (paths.length > 0) {
+        const path = paths[0];
+        const progress = await lpModel.getRecipientProgress(full.recipient_id, path.id);
+        const stepsHtml = progress.badges.map((b) => {
+          const earned = b.earned;
+          return `<div class="path-step ${earned ? 'earned' : 'pending'}">
+            <div class="step-dot">${earned ? '&#10003;' : ''}</div>
+            <div class="step-label">${b.name}</div>
+          </div>`;
+        }).join('<div class="step-line"></div>');
+
+        pathHtml = `<div class="path-section">
+          <div class="path-title">Parte de: ${path.name}</div>
+          <div class="path-progress-bar">
+            <div class="path-progress-fill" style="width:${progress.percentage}%"></div>
+          </div>
+          <div class="path-progress-text">${progress.completed}/${progress.total} completados (${progress.percentage}%)</div>
+          <div class="path-steps">${stepsHtml}</div>
+        </div>`;
+      }
+    } catch (_) {}
 
     const html = `<!DOCTYPE html>
 <html lang="es">
@@ -49,6 +76,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .btn-linkedin{background:#0077B5;color:#fff}
 .footer{text-align:center;padding:12px;font-size:11px;color:#b2bec3;border-top:1px solid #f0f2f5}
 .footer a{color:#79368f;text-decoration:none}
+.path-section{padding:16px 24px 0;border-top:1px solid #f0f2f5}
+.path-title{font-size:13px;font-weight:700;color:#2d1b3d;margin-bottom:8px}
+.path-progress-bar{height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin-bottom:4px}
+.path-progress-fill{height:100%;background:linear-gradient(90deg,#79368f,#0094d4);border-radius:3px;transition:width .3s}
+.path-progress-text{font-size:11px;color:#636e72;margin-bottom:12px}
+.path-steps{display:flex;align-items:flex-start;gap:0;flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}
+.path-step{display:flex;flex-direction:column;align-items:center;min-width:60px;flex-shrink:0}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;border:2px solid #ddd;color:#ddd;background:#fff}
+.path-step.earned .step-dot{background:#00b894;border-color:#00b894;color:#fff}
+.step-label{font-size:9px;color:#636e72;text-align:center;margin-top:4px;max-width:70px;line-height:1.2}
+.step-line{width:20px;height:2px;background:#ddd;margin-top:14px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -67,7 +105,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <a class="btn btn-linkedin" href="#" onclick="addToLinkedIn(event)">Agregar a LinkedIn</a>
     </div>
   </div>
-  <div class="footer">Credencial Open Badges 3.0 &middot; <a href="${baseUrl}" target="_blank">Verificar autenticidad</a></div>
+  ${pathHtml}
+  <div class="footer">Credencial Open Badges 3.0 &middot; <a href="${verifyUrl}" target="_blank">Verificar autenticidad</a></div>
 </div>
 <script>
 async function addToLinkedIn(e){

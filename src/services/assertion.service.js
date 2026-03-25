@@ -6,6 +6,18 @@ const { sendBadgeEmail } = require('./email.service');
 const issuerModel = require('../models/issuer.model');
 const { port } = require('../config/env');
 
+function buildRelated(relatedJson, baseUrl) {
+  if (!relatedJson) return [];
+  try {
+    const arr = typeof relatedJson === 'string' ? JSON.parse(relatedJson) : relatedJson;
+    if (!Array.isArray(arr)) return [];
+    return arr.map((r) => ({
+      id: `${baseUrl}/api/badge-classes/${r.id}`,
+      type: ['Achievement'],
+    }));
+  } catch (_) { return []; }
+}
+
 function buildCredentialJson(row) {
   const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
 
@@ -41,6 +53,10 @@ function buildCredentialJson(row) {
           image: { id: row.badge_image_url, type: 'Image' },
         }),
         ...(row.achievement_type && { achievementType: row.achievement_type }),
+        ...(() => {
+          const rel = buildRelated(row.related_badges, baseUrl);
+          return rel.length > 0 ? { related: rel } : {};
+        })(),
       },
     },
     ...(row.evidence_url || row.evidence_narrative
@@ -109,7 +125,9 @@ async function create(data) {
 
   // Send notification email (non-blocking)
   const issuer = await issuerModel.findById(badge.issuer_id);
-  sendBadgeEmail(recipient, assertion, badge, issuer).catch(() => {});
+  sendBadgeEmail(recipient, assertion, badge, issuer).catch((err) => {
+    console.error('sendBadgeEmail failed:', err.message, err.code, err.statusCode);
+  });
 
   return signed;
 }

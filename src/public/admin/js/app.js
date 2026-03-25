@@ -110,8 +110,8 @@ function showDashboard() {
 // ============================================
 // NAVIGATION
 // ============================================
-const sections = { issuers: 'sec-issuers', badges: 'sec-badges', recipients: 'sec-recipients', assertions: 'sec-assertions', users: 'sec-users' };
-const loaders = { issuers: loadIssuers, badges: loadBadges, recipients: loadRecipients, assertions: loadAssertions, users: loadUsers };
+const sections = { issuers: 'sec-issuers', badges: 'sec-badges', recipients: 'sec-recipients', assertions: 'sec-assertions', paths: 'sec-paths', users: 'sec-users' };
+const loaders = { issuers: loadIssuers, badges: loadBadges, recipients: loadRecipients, assertions: loadAssertions, paths: loadPaths, users: loadUsers };
 
 document.querySelectorAll('.nav-item').forEach((item) => {
   item.addEventListener('click', (e) => {
@@ -477,7 +477,10 @@ async function loadRecipients() {
           <td>${r.email}</td>
           <td>${r.url || '—'}</td>
           <td>${fmtDate(r.created_at)}</td>
-          <td><a class="btn btn-sm" style="background:#79368f;color:#fff;text-decoration:none" href="${API}/api/recipients/${r.id}/transcript" target="_blank">Transcript</a></td>
+          <td>
+            <a class="btn btn-sm" style="background:#79368f;color:#fff;text-decoration:none" href="${API}/api/recipients/${r.id}/transcript" target="_blank">Transcript</a>
+            <button class="btn btn-outline btn-sm" onclick="showRecipientProgress('${r.id}', '${r.name.replace(/'/g, "\\'")}')">Progreso</button>
+          </td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="5">No hay recipients</td></tr>';
 
@@ -499,6 +502,38 @@ async function createRecipient(e) {
     toggleForm('recipient-form');
     e.target.reset();
     loadRecipients();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function showRecipientProgress(recipientId, recipientName) {
+  try {
+    const paths = await api('GET', '/api/learning-paths');
+    if (paths.length === 0) {
+      openModal('Progreso de ' + recipientName, '<p style="color:var(--text-light)">No hay rutas de aprendizaje creadas.</p>', '');
+      return;
+    }
+
+    let html = '';
+    for (const p of paths) {
+      const progress = await api('GET', '/api/recipients/' + recipientId + '/progress/' + p.id);
+      const barColor = progress.percentage === 100 ? '#00b894' : '#79368f';
+      const badgesHtml = progress.badges.map((b) =>
+        `<span style="display:inline-flex;align-items:center;gap:4px;margin:2px 4px;font-size:12px;padding:3px 8px;border-radius:12px;background:${b.earned ? '#e8f8f5' : '#f0f2f5'};color:${b.earned ? '#00b894' : '#b2bec3'}">${b.earned ? '&#10003;' : '&#9711;'} ${b.name}</span>`
+      ).join('');
+
+      html += `<div style="margin-bottom:16px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px">${p.name}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="flex:1;height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden">
+            <div style="width:${progress.percentage}%;height:100%;background:${barColor};border-radius:4px"></div>
+          </div>
+          <span style="font-size:12px;color:var(--text-light);min-width:60px">${progress.completed}/${progress.total} (${progress.percentage}%)</span>
+        </div>
+        <div>${badgesHtml}</div>
+      </div>`;
+    }
+
+    openModal('Progreso de ' + recipientName, html, '');
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -666,6 +701,170 @@ function copySnippet() {
     document.execCommand('copy');
     toast('Snippet copiado', 'success');
   });
+}
+
+// ============================================
+// LEARNING PATHS
+// ============================================
+let _editingPathId = null;
+let _currentPathId = null;
+
+async function loadPaths() {
+  try {
+    const [paths, issuers] = await Promise.all([
+      api('GET', '/api/learning-paths'),
+      api('GET', '/api/issuers'),
+    ]);
+
+    const sel = document.getElementById('lp-issuer');
+    sel.innerHTML = '<option value="">Seleccionar issuer...</option>'
+      + issuers.map((i) => `<option value="${i.id}">${i.name}</option>`).join('');
+
+    const issuerMap = {};
+    issuers.forEach((i) => issuerMap[i.id] = i.name);
+
+    const rows = paths.length
+      ? paths.map((p) => `<tr>
+          <td><strong>${p.name}</strong></td>
+          <td>${truncate(p.description, 50)}</td>
+          <td>${issuerMap[p.issuer_id] || '—'}</td>
+          <td>${fmtDate(p.created_at)}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="viewPath('${p.id}')">Badges</button>
+            <button class="btn btn-outline btn-sm" onclick="editPath('${p.id}')">Editar</button>
+          </td>
+        </tr>`).join('')
+      : '<tr class="empty-row"><td colspan="5">No hay rutas</td></tr>';
+
+    document.getElementById('paths-table').innerHTML = `<table>
+      <thead><tr><th>Nombre</th><th>Descripción</th><th>Issuer</th><th>Creado</th><th>Acciones</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function resetPathForm() {
+  _editingPathId = null;
+  document.getElementById('path-form-title').textContent = 'Crear Ruta';
+  const form = document.querySelector('#path-form form');
+  if (form) form.reset();
+}
+
+async function editPath(id) {
+  try {
+    const path = await api('GET', '/api/learning-paths/' + id);
+    _editingPathId = id;
+    document.getElementById('path-form-title').textContent = 'Editar Ruta';
+    document.getElementById('lp-issuer').value = path.issuer_id;
+    document.getElementById('lp-name').value = path.name;
+    document.getElementById('lp-desc').value = path.description || '';
+    const formCard = document.getElementById('path-form');
+    if (formCard.classList.contains('hidden')) formCard.classList.remove('hidden');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function savePath(e) {
+  e.preventDefault();
+  try {
+    const data = {
+      issuer_id: document.getElementById('lp-issuer').value,
+      name: document.getElementById('lp-name').value,
+      description: document.getElementById('lp-desc').value || undefined,
+    };
+    if (_editingPathId) {
+      await api('PUT', '/api/learning-paths/' + _editingPathId, data);
+      toast('Ruta actualizada', 'success');
+    } else {
+      await api('POST', '/api/learning-paths', data);
+      toast('Ruta creada', 'success');
+    }
+    toggleForm('path-form');
+    resetPathForm();
+    loadPaths();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function viewPath(id) {
+  try {
+    const [path, badges] = await Promise.all([
+      api('GET', '/api/learning-paths/' + id),
+      api('GET', '/api/badge-classes'),
+    ]);
+    _currentPathId = id;
+    document.getElementById('path-detail').classList.remove('hidden');
+    document.getElementById('path-detail-title').textContent = path.name;
+
+    const usedIds = new Set((path.badges || []).map((b) => b.id));
+    const available = badges.filter((b) => !usedIds.has(b.id));
+    document.getElementById('lp-add-badge').innerHTML = '<option value="">Seleccionar badge...</option>'
+      + available.map((b) => `<option value="${b.id}">${b.name}</option>`).join('');
+
+    renderPathBadges(path.badges || []);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function renderPathBadges(badges) {
+  if (badges.length === 0) {
+    document.getElementById('path-badges-list').innerHTML = '<p style="color:var(--text-light);text-align:center;padding:20px">No hay badges en esta ruta</p>';
+    return;
+  }
+
+  const html = badges.map((b, i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg);border-radius:var(--radius);margin-bottom:6px">
+      <span style="font-size:16px;font-weight:700;color:var(--primary);min-width:28px;text-align:center">${i + 1}</span>
+      <span style="flex:1;font-size:14px">${b.name}</span>
+      <span class="tag tag-type" style="font-size:10px">${b.achievement_type || 'Badge'}</span>
+      ${i > 0 ? `<button class="btn btn-outline btn-sm" onclick="movePathBadge(${i},-1)" title="Subir">&#9650;</button>` : '<span style="width:39px"></span>'}
+      ${i < badges.length - 1 ? `<button class="btn btn-outline btn-sm" onclick="movePathBadge(${i},1)" title="Bajar">&#9660;</button>` : '<span style="width:39px"></span>'}
+      <button class="btn btn-danger btn-sm" onclick="removePathBadge('${b.id}')">&#10005;</button>
+    </div>`).join('');
+
+  // Progress visual
+  const dots = badges.map((b, i) =>
+    `<div style="display:flex;flex-direction:column;align-items:center">
+      <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i + 1}</div>
+      <div style="font-size:9px;color:var(--text-light);max-width:60px;text-align:center;margin-top:2px">${b.name}</div>
+    </div>`
+  ).join('<div style="width:30px;height:2px;background:var(--primary);margin-top:12px;flex-shrink:0"></div>');
+
+  document.getElementById('path-badges-list').innerHTML =
+    `<div style="display:flex;align-items:flex-start;gap:0;margin-bottom:16px;overflow-x:auto;padding:8px 0">${dots}</div>${html}`;
+}
+
+let _pathBadgesCache = [];
+async function addBadgeToPath() {
+  const sel = document.getElementById('lp-add-badge');
+  if (!sel.value || !_currentPathId) return;
+  try {
+    await api('POST', '/api/learning-paths/' + _currentPathId + '/badges', {
+      badge_class_id: sel.value,
+      order_position: 999,
+    });
+    toast('Badge agregado', 'success');
+    viewPath(_currentPathId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function removePathBadge(badgeId) {
+  if (!_currentPathId) return;
+  try {
+    await api('DELETE', '/api/learning-paths/' + _currentPathId + '/badges/' + badgeId);
+    toast('Badge removido', 'success');
+    viewPath(_currentPathId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function movePathBadge(fromIdx, direction) {
+  if (!_currentPathId) return;
+  try {
+    const path = await api('GET', '/api/learning-paths/' + _currentPathId);
+    const badges = path.badges || [];
+    const toIdx = fromIdx + direction;
+    if (toIdx < 0 || toIdx >= badges.length) return;
+    const order = badges.map((b) => b.id);
+    [order[fromIdx], order[toIdx]] = [order[toIdx], order[fromIdx]];
+    await api('PUT', '/api/learning-paths/' + _currentPathId + '/reorder', { badge_order: order });
+    viewPath(_currentPathId);
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 // ============================================
